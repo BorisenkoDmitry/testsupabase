@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+const read = (client, name, args = {}) => client.rpc(name, args, { get: true });
 export async function verifyCloudLists({
   manager,
   ivan,
@@ -10,7 +11,7 @@ export async function verifyCloudLists({
   data,
 }) {
   const tasks = (actor, args = {}) =>
-    data(actor.client.rpc("crm_list_tasks", args));
+    data(read(actor.client, "crm_list_tasks", args));
   for (const [actor, total] of [
     [manager, 8],
     [ivan, 4],
@@ -128,7 +129,7 @@ export async function verifyCloudLists({
     [alexey, 2],
   ]) {
     const objects = await data(
-      actor.client.rpc("crm_list_objects", { p_page_size: 1 }),
+      read(actor.client, "crm_list_objects", { p_page_size: 1 }),
     );
     ok(
       objects.total === 3 && objects.items.length === 1,
@@ -149,7 +150,7 @@ export async function verifyCloudLists({
       "Object card count includes only permitted tasks",
     );
     const found = await data(
-      actor.client.rpc("crm_list_objects", { p_search: "Репино" }),
+      read(actor.client, "crm_list_objects", { p_search: "Репино" }),
     );
     ok(
       found.total === 1 && found.items[0].name === "Дом в Репино",
@@ -157,7 +158,7 @@ export async function verifyCloudLists({
     );
   }
   const options = await data(
-    manager.client.rpc("crm_list_options", { p_kind: "assignees" }),
+    read(manager.client, "crm_list_options", { p_kind: "assignees" }),
   );
   ok(
     options.length === 2 &&
@@ -166,7 +167,7 @@ export async function verifyCloudLists({
   );
   const foreignTask = all.find((t) => t.assignee_id === alexey.id);
   const history = await data(
-    manager.client.rpc("crm_task_history_page", {
+    read(manager.client, "crm_task_history_page", {
       p_task_id: foreignTask.id,
       p_page_size: 2,
     }),
@@ -182,7 +183,7 @@ export async function verifyCloudLists({
     "History is ordered by database",
   );
   const hidden = await data(
-    ivan.client.rpc("crm_task_history_page", { p_task_id: foreignTask.id }),
+    read(ivan.client, "crm_task_history_page", { p_task_id: foreignTask.id }),
   );
   ok(
     hidden.items.length === 0 && hidden.total === 0,
@@ -195,24 +196,24 @@ export async function verifyCloudLists({
     { p_direction: "INVALID" },
   ])
     await denied(
-      manager.client.rpc("crm_list_tasks", args),
+      read(manager.client, "crm_list_tasks", args),
       "Invalid list parameters are rejected",
       "22023",
     );
   await denied(
-    anon.rpc("crm_list_tasks", {}),
+    read(anon, "crm_list_tasks", {}),
     "Anonymous cannot invoke task list RPC",
   );
   await denied(
-    anon.rpc("crm_list_objects", {}),
+    read(anon, "crm_list_objects", {}),
     "Anonymous cannot invoke object list RPC",
   );
   await denied(
-    anon.rpc("crm_list_options", { p_kind: "profiles" }),
+    read(anon, "crm_list_options", { p_kind: "profiles" }),
     "Anonymous cannot read dropdown profiles",
   );
   await denied(
-    anon.rpc("crm_task_history_page", { p_task_id: foreignTask.id }),
+    read(anon, "crm_task_history_page", { p_task_id: foreignTask.id }),
     "Anonymous cannot invoke history page RPC",
   );
 }

@@ -46,6 +46,14 @@ function setup(response: unknown = task, status = 200) {
   );
   return { api: createSupabaseApi(client), requests, fetcher };
 }
+function expectGet(
+  request: ReturnType<typeof setup>["requests"][number],
+  params: Record<string, string>,
+) {
+  expect(request.method).toBe("GET");
+  expect(request.body).toBeNull();
+  expect(Object.fromEntries(new URL(request.url).searchParams)).toEqual(params);
+}
 describe("Supabase adapter boundary", () => {
   it("maps server fields and includes the version displayed to the user", async () => {
     const { api, requests } = setup();
@@ -143,7 +151,7 @@ describe("Supabase adapter boundary", () => {
     const signal = new AbortController().signal;
     const page = await api.tasks.list(
       {
-        search: "%_",
+        search: "Кириллица & + ? # = %_",
         objectId: "obj",
         assigneeId: "user",
         status: "new",
@@ -155,15 +163,15 @@ describe("Supabase adapter boundary", () => {
       signal,
     );
     expect(requests[0].url).toContain("/rpc/crm_list_tasks");
-    expect(requests[0].body).toEqual({
-      p_search: "%_",
+    expectGet(requests[0], {
+      p_search: "Кириллица & + ? # = %_",
       p_object_id: "obj",
       p_assignee_id: "user",
       p_status: "new",
       p_sort: "assigneeName",
       p_direction: "asc",
-      p_page: 2,
-      p_page_size: 20,
+      p_page: "2",
+      p_page_size: "20",
     });
     expect(page.total).toBe(101);
     expect(page.pageIndex).toBe(2);
@@ -193,10 +201,12 @@ describe("Supabase adapter boundary", () => {
     });
     const page = await api.objects.list({ search: "Москва", pageIndex: 1 });
     expect(requests[0].url).toContain("crm_list_objects");
-    expect(requests[0].body).toMatchObject({
+    expectGet(requests[0], {
       p_search: "Москва",
-      p_page: 1,
-      p_page_size: 10,
+      p_sort: "createdAt",
+      p_direction: "desc",
+      p_page: "1",
+      p_page_size: "10",
     });
     expect(page.items[0]).toMatchObject({
       taskCount: 30,
@@ -216,7 +226,7 @@ describe("Supabase adapter boundary", () => {
       },
     ]);
     expect(await api.users.list(true)).toHaveLength(1);
-    expect(requests[0].body).toEqual({ p_kind: "assignees" });
+    expectGet(requests[0], { p_kind: "assignees" });
   });
   it("passes history page parameters and preserves server order", async () => {
     const item = {
@@ -235,10 +245,10 @@ describe("Supabase adapter boundary", () => {
       pageSize: 10,
     });
     const page = await api.tasks.history("task", { pageIndex: 1 });
-    expect(requests[0].body).toEqual({
+    expectGet(requests[0], {
       p_task_id: "task",
-      p_page: 1,
-      p_page_size: 10,
+      p_page: "1",
+      p_page_size: "10",
     });
     expect(page.items.map((x) => x.id)).toEqual(["h1", "h2"]);
     expect(page.total).toBe(19);
@@ -247,5 +257,89 @@ describe("Supabase adapter boundary", () => {
     const { api, fetcher } = setup([task]);
     await expect(api.tasks.list()).rejects.toThrow();
     expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+  it("omits unset filters from GET query parameters", async () => {
+    const { api, requests } = setup({
+      items: [],
+      total: 0,
+      pageIndex: 0,
+      pageSize: 10,
+      summary: { total: 0, newCount: 0, inProgressCount: 0, reviewCount: 0 },
+    });
+    await api.tasks.list();
+    expectGet(requests[0], {
+      p_search: "",
+      p_sort: "createdAt",
+      p_direction: "desc",
+      p_page: "0",
+      p_page_size: "10",
+    });
+  });
+  it("uses GET for profile and object reference lists", async () => {
+    const { api, requests } = setup([]);
+    await api.users.list();
+    await api.objects.options();
+    expectGet(requests[0], { p_kind: "profiles" });
+    expectGet(requests[1], { p_kind: "objects" });
+  });
+  it("uses GET for individual objects and tasks", async () => {
+    const { api, requests } = setup({
+      ...task,
+      name: "Объект",
+      address: "Москва",
+    });
+    await api.objects.get("object");
+    await api.tasks.get("task");
+    expectGet(requests[0], { select: "*", id: "eq.object" });
+    expectGet(requests[1], { select: "*", id: "eq.task" });
+  });
+  it.each([
+    "crm_create_object",
+    "crm_update_object",
+    "crm_delete_object",
+    "crm_create_task",
+    "crm_update_task",
+    "crm_delete_task",
+    "crm_transition_task",
+  ])("keeps write RPC %s as POST with a JSON body", async (name) => {
+    const { api, requests } = setup({
+      ...task,
+      name: "Объект",
+      address: "Москва",
+    });
+    const object = { name: "Объект", address: "Москва" };
+    const input = {
+      title: "Задача",
+      description: "",
+      objectId: "object",
+      assigneeId: "ivan",
+    };
+    switch (name) {
+      case "crm_create_object":
+        await api.objects.save(object);
+        break;
+      case "crm_update_object":
+        await api.objects.save(object, "object", 3);
+        break;
+      case "crm_delete_object":
+        await api.objects.remove("object", 3);
+        break;
+      case "crm_create_task":
+        await api.tasks.save(input);
+        break;
+      case "crm_update_task":
+        await api.tasks.save(input, "task", 3);
+        break;
+      case "crm_delete_task":
+        await api.tasks.remove("task", 3);
+        break;
+      case "crm_transition_task":
+        await api.tasks.transition("task", "review", "Готово", 3);
+        break;
+    }
+    expect(new URL(requests[0].url).pathname).toBe("/rest/v1/rpc/" + name);
+    expect(new URL(requests[0].url).search).toBe("");
+    expect(requests[0].method).toBe("POST");
+    expect(requests[0].body).not.toBeNull();
   });
 });

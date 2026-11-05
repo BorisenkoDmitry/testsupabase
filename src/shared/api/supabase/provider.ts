@@ -153,9 +153,11 @@ export function createSupabaseApi(client: SupabaseClient<Database>): CrmApi {
       async list(assigneesOnly = false, signal) {
         const data = await result(
           client
-            .rpc("crm_list_options", {
-              p_kind: assigneesOnly ? "assignees" : "profiles",
-            })
+            .rpc(
+              "crm_list_options",
+              { p_kind: assigneesOnly ? "assignees" : "profiles" },
+              { get: true },
+            )
             .abortSignal(signal ?? AbortSignal.timeout(30000)),
         );
         return profileListSchema.parse(data).map(userDto);
@@ -166,13 +168,17 @@ export function createSupabaseApi(client: SupabaseClient<Database>): CrmApi {
         const data = objectPageSchema.parse(
           await result(
             client
-              .rpc("crm_list_objects", {
-                p_search: request.search ?? "",
-                p_sort: request.sortBy ?? "createdAt",
-                p_direction: request.sortDirection ?? "desc",
-                p_page: request.pageIndex ?? 0,
-                p_page_size: request.pageSize ?? 10,
-              })
+              .rpc(
+                "crm_list_objects",
+                {
+                  p_search: request.search ?? "",
+                  p_sort: request.sortBy ?? "createdAt",
+                  p_direction: request.sortDirection ?? "desc",
+                  p_page: request.pageIndex ?? 0,
+                  p_page_size: request.pageSize ?? 10,
+                },
+                { get: true },
+              )
               .abortSignal(signal ?? AbortSignal.timeout(30000)),
           ),
         );
@@ -190,7 +196,7 @@ export function createSupabaseApi(client: SupabaseClient<Database>): CrmApi {
         return objectOptionsSchema.parse(
           await result(
             client
-              .rpc("crm_list_options", { p_kind: "objects" })
+              .rpc("crm_list_options", { p_kind: "objects" }, { get: true })
               .abortSignal(signal ?? AbortSignal.timeout(30000)),
           ),
         );
@@ -234,16 +240,20 @@ export function createSupabaseApi(client: SupabaseClient<Database>): CrmApi {
         const data = taskPageSchema.parse(
           await result(
             client
-              .rpc("crm_list_tasks", {
-                p_search: request.search ?? "",
-                p_object_id: request.objectId,
-                p_status: request.status,
-                p_assignee_id: request.assigneeId,
-                p_sort: request.sortBy ?? "createdAt",
-                p_direction: request.sortDirection ?? "desc",
-                p_page: request.pageIndex ?? 0,
-                p_page_size: request.pageSize ?? 10,
-              })
+              .rpc(
+                "crm_list_tasks",
+                {
+                  p_search: request.search ?? "",
+                  p_object_id: request.objectId,
+                  p_status: request.status,
+                  p_assignee_id: request.assigneeId,
+                  p_sort: request.sortBy ?? "createdAt",
+                  p_direction: request.sortDirection ?? "desc",
+                  p_page: request.pageIndex ?? 0,
+                  p_page_size: request.pageSize ?? 10,
+                },
+                { get: true },
+              )
               .abortSignal(signal ?? AbortSignal.timeout(30000)),
           ),
         );
@@ -265,11 +275,15 @@ export function createSupabaseApi(client: SupabaseClient<Database>): CrmApi {
         const data = historyPageSchema.parse(
           await result(
             client
-              .rpc("crm_task_history_page", {
-                p_task_id: id,
-                p_page: request.pageIndex ?? 0,
-                p_page_size: request.pageSize ?? 10,
-              })
+              .rpc(
+                "crm_task_history_page",
+                {
+                  p_task_id: id,
+                  p_page: request.pageIndex ?? 0,
+                  p_page_size: request.pageSize ?? 10,
+                },
+                { get: true },
+              )
               .abortSignal(signal ?? AbortSignal.timeout(30000)),
           ),
         );

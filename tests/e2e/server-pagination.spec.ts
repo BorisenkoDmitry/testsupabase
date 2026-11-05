@@ -26,8 +26,9 @@ async function call(
   client: SupabaseClient,
   name: string,
   args: Record<string, unknown>,
+  get = false,
 ) {
-  const { data, error } = await client.rpc(name, args);
+  const { data, error } = await client.rpc(name, args, { get });
   if (error) throw error;
   return data;
 }
@@ -60,8 +61,8 @@ const taskResponse = (
   page.waitForResponse(
     (r) =>
       r.url().includes("/rpc/crm_list_tasks") &&
-      r.request().method() === "POST" &&
-      match(r.request().postDataJSON()),
+      r.request().method() === "GET" &&
+      match(Object.fromEntries(new URL(r.url()).searchParams)),
   );
 const objectResponse = (
   page: Page,
@@ -70,15 +71,25 @@ const objectResponse = (
   page.waitForResponse(
     (r) =>
       r.url().includes("/rpc/crm_list_objects") &&
-      r.request().method() === "POST" &&
-      match(r.request().postDataJSON()),
+      r.request().method() === "GET" &&
+      match(Object.fromEntries(new URL(r.url()).searchParams)),
   );
 test("server filters/sorts before pagination; controls appear only for more than one page", async ({
   page,
   browser,
 }) => {
   test.setTimeout(120000);
+  const reads: { url: string; method: string; body: string | null }[] = [];
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname.startsWith("/rest/v1/"))
+      reads.push({
+        url: request.url(),
+        method: request.method(),
+        body: request.postData(),
+      });
+  });
   await login(page);
+  await expect(page.locator(".object-card")).toHaveCount(3);
   await page.goto("/tasks");
   await expect(page.locator("tbody tr")).toHaveCount(8);
   await expect(
@@ -87,9 +98,14 @@ test("server filters/sorts before pagination; controls appear only for more than
   const client = await api();
   let id = "";
   try {
-    const people = await call(client, "crm_list_options", {
-      p_kind: "assignees",
-    });
+    const people = await call(
+      client,
+      "crm_list_options",
+      {
+        p_kind: "assignees",
+      },
+      true,
+    );
     const ivan = people.find(
       (u: { email: string }) => u.email === "ivan@demo.ru",
     );
@@ -141,7 +157,7 @@ test("server filters/sorts before pagination; controls appear only for more than
     await workerApi.auth.signOut({ scope: "local" });
     const firstResponse = taskResponse(
       page,
-      (p) => p.p_object_id === id && p.p_page === 0,
+      (p) => p.p_object_id === id && p.p_page === "0",
     );
     await page.goto("/objects/" + id);
     const first = await (await firstResponse).json();
@@ -170,7 +186,7 @@ test("server filters/sorts before pagination; controls appear only for more than
     await page.setViewportSize({ width: 1280, height: 720 });
     const secondResponse = taskResponse(
       page,
-      (p) => p.p_object_id === id && p.p_page === 1,
+      (p) => p.p_object_id === id && p.p_page === "1",
     );
     await nav.getByRole("button", { name: "Следующая страница" }).click();
     const second = await (await secondResponse).json();
@@ -184,7 +200,8 @@ test("server filters/sorts before pagination; controls appear only for more than
     ).toBe(12);
     const sortedResponse = taskResponse(
       page,
-      (p) => p.p_sort === "title" && p.p_direction === "asc" && p.p_page === 0,
+      (p) =>
+        p.p_sort === "title" && p.p_direction === "asc" && p.p_page === "0",
     );
     await page
       .getByRole("button", {
@@ -200,7 +217,7 @@ test("server filters/sorts before pagination; controls appear only for more than
     expect(sorted.items.at(-1).title).toBe("Серверная задача 10");
     const biggerResponse = taskResponse(
       page,
-      (p) => p.p_page_size === 20 && p.p_page === 0,
+      (p) => p.p_page_size === "20" && p.p_page === "0",
     );
     await nav
       .getByRole("combobox", { name: "Записей на странице" })
@@ -271,6 +288,20 @@ test("server filters/sorts before pagination; controls appear only for more than
     } finally {
       await context.close();
     }
+    expect(reads.length).toBeGreaterThan(0);
+    for (const read of reads) {
+      expect(read.method, new URL(read.url).pathname).toBe("GET");
+      expect(read.body).toBeNull();
+    }
+    expect(reads.map((r) => new URL(r.url).pathname)).toEqual(
+      expect.arrayContaining([
+        "/rest/v1/profiles",
+        "/rest/v1/objects",
+        "/rest/v1/rpc/crm_list_objects",
+        "/rest/v1/rpc/crm_list_options",
+        "/rest/v1/rpc/crm_list_tasks",
+      ]),
+    );
   } finally {
     if (id) await cleanup(client, id);
     await client.auth.signOut({ scope: "local" });
@@ -293,7 +324,7 @@ test("object search and page boundaries are supplied by Supabase", async ({
     }
     const firstResponse = objectResponse(
       page,
-      (p) => p.p_page === 0 && p.p_search === "",
+      (p) => p.p_page === "0" && p.p_search === "",
     );
     await login(page);
     const first = await (await firstResponse).json();
@@ -303,20 +334,20 @@ test("object search and page boundaries are supplied by Supabase", async ({
     await expect(nav).toContainText("Страница 1 из 2");
     const filteredResponse = objectResponse(
       page,
-      (p) => p.p_search === prefix && p.p_page === 0,
+      (p) => p.p_search === prefix && p.p_page === "0",
     );
     await page.getByRole("textbox", { name: "Поиск объектов" }).fill(prefix);
     expect((await (await filteredResponse).json()).total).toBe(11);
     const nextResponse = objectResponse(
       page,
-      (p) => p.p_search === prefix && p.p_page === 1,
+      (p) => p.p_search === prefix && p.p_page === "1",
     );
     await nav.getByRole("button", { name: "Следующая страница" }).click();
     expect((await (await nextResponse).json()).items).toHaveLength(1);
     await expect(page.locator(".object-card")).toHaveCount(1);
     const lastResponse = objectResponse(
       page,
-      (p) => p.p_search === prefix + " 10" && p.p_page === 0,
+      (p) => p.p_search === prefix + " 10" && p.p_page === "0",
     );
     await page
       .getByRole("textbox", { name: "Поиск объектов" })
@@ -338,9 +369,14 @@ test("long task history is ordered and paged by server", async ({ page }) => {
     { auth: { persistSession: false, autoRefreshToken: false } },
   );
   try {
-    const people = await call(client, "crm_list_options", {
-      p_kind: "assignees",
-    });
+    const people = await call(
+      client,
+      "crm_list_options",
+      {
+        p_kind: "assignees",
+      },
+      true,
+    );
     const ivan = people.find(
       (u: { email: string }) => u.email === "ivan@demo.ru",
     );
@@ -380,7 +416,8 @@ test("long task history is ordered and paged by server", async ({ page }) => {
     const firstResponse = page.waitForResponse(
       (r) =>
         r.url().includes("/rpc/crm_task_history_page") &&
-        r.request().postDataJSON()?.p_task_id === task.id,
+        r.request().method() === "GET" &&
+        new URL(r.url()).searchParams.get("p_task_id") === task.id,
     );
     await page.goto("/tasks/" + task.id);
     const first = await (await firstResponse).json();
@@ -392,7 +429,8 @@ test("long task history is ordered and paged by server", async ({ page }) => {
     const nextResponse = page.waitForResponse(
       (r) =>
         r.url().includes("/rpc/crm_task_history_page") &&
-        r.request().postDataJSON()?.p_page === 1,
+        r.request().method() === "GET" &&
+        new URL(r.url()).searchParams.get("p_page") === "1",
     );
     await nav.getByRole("button", { name: "Следующая страница" }).click();
     const second = await (await nextResponse).json();

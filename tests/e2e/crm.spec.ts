@@ -126,7 +126,10 @@ test("manager creates and edits object/task, reassigns, and archives them throug
     await page
       .getByRole("button", { name: "Создать объект", exact: true })
       .click();
-    objectId = (await (await objectResponse).json()).id;
+    const created = await objectResponse;
+    expect(created.request().method()).toBe("POST");
+    expect(new URL(created.url()).search).toBe("");
+    objectId = (await created.json()).id;
     await page.getByRole("heading", { name: objectName, exact: true }).click();
     await page
       .getByRole("button", { name: "Новая задача", exact: true })
