@@ -1,7 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 
 async function openObject(page: Page, user = "manager") {
-  await page.goto("/login");
+  await page.goto("/login", { waitUntil: "domcontentloaded" });
   await page.getByLabel("Email", { exact: true }).fill(user + "@demo.ru");
   await page
     .getByLabel("Пароль", { exact: true })

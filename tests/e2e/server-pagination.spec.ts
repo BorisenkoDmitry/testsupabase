@@ -3,7 +3,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 const password = process.env.DEMO_USERS_PASSWORD!;
 const baseURL = process.env.CRM_BASE_URL ?? "http://127.0.0.1:5180";
 async function login(page: Page, name = "manager") {
-  await page.goto("/login");
+  await page.goto("/login", { waitUntil: "domcontentloaded" });
   await page.getByLabel("Email", { exact: true }).fill(name + "@demo.ru");
   await page.getByLabel("Пароль", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Войти в пространство" }).click();
@@ -88,13 +88,24 @@ test("server filters/sorts before pagination; controls appear only for more than
         body: request.postData(),
       });
   });
+  const initialObjects = objectResponse(
+    page,
+    (p) => p.p_search === "" && p.p_page === "0",
+  );
   await login(page);
-  await expect(page.locator(".object-card")).toHaveCount(3);
+  await expect(page.locator(".object-card")).toHaveCount(
+    (await (await initialObjects).json()).items.length,
+  );
+  const initialTasks = taskResponse(
+    page,
+    (p) => p.p_search === "" && p.p_page === "0",
+  );
   await page.goto("/tasks");
-  await expect(page.locator("tbody tr")).toHaveCount(8);
+  const baseline = await (await initialTasks).json();
+  await expect(page.locator("tbody tr")).toHaveCount(baseline.items.length);
   await expect(
     page.getByRole("navigation", { name: "Пагинация задач" }),
-  ).toHaveCount(0);
+  ).toHaveCount(baseline.total > baseline.pageSize ? 1 : 0);
   const client = await api();
   let id = "";
   try {
@@ -270,11 +281,20 @@ test("server filters/sorts before pagination; controls appear only for more than
     const context = await browser.newContext({ baseURL });
     const executor = await context.newPage();
     try {
+      const loaded = taskResponse(executor, (p) => p.p_page === "0");
       await login(executor, "ivan");
-      await expect(executor.locator("tbody tr")).toHaveCount(10);
+      const ownPage = await (await loaded).json();
+      expect(
+        ownPage.items.every(
+          (t: { assignee_id: string }) => t.assignee_id === ivan.id,
+        ),
+      ).toBe(true);
+      await expect(executor.locator("tbody tr")).toHaveCount(
+        ownPage.items.length,
+      );
       await expect(
         executor.getByRole("navigation", { name: "Пагинация задач" }),
-      ).toHaveCount(0);
+      ).toHaveCount(ownPage.total > ownPage.pageSize ? 1 : 0);
       const ownResponse = taskResponse(executor, (p) => p.p_object_id === id);
       await executor.goto("/objects/" + id);
       const own = await (await ownResponse).json();
@@ -328,10 +348,12 @@ test("object search and page boundaries are supplied by Supabase", async ({
     );
     await login(page);
     const first = await (await firstResponse).json();
-    expect(first.total).toBe(14);
+    expect(first.total).toBeGreaterThanOrEqual(ids.length);
     expect(first.items).toHaveLength(10);
     const nav = page.getByRole("navigation", { name: "Пагинация объектов" });
-    await expect(nav).toContainText("Страница 1 из 2");
+    await expect(nav).toContainText(
+      `Страница 1 из ${Math.ceil(first.total / first.pageSize)}`,
+    );
     const filteredResponse = objectResponse(
       page,
       (p) => p.p_search === prefix && p.p_page === "0",

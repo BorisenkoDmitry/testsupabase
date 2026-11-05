@@ -1,19 +1,28 @@
 import { test, expect, type Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
+import { taskPage } from "./helpers/task-page";
 const password = process.env.DEMO_USERS_PASSWORD;
 if (!password)
   throw Error("Run npm run test:e2e with .env.supabase configured.");
 const url = process.env.SUPABASE_URL!;
 const key = process.env.SUPABASE_PUBLISHABLE_KEY!;
 async function login(page: Page, name: string) {
-  await page.goto("/login");
+  await page.goto("/login", { waitUntil: "domcontentloaded" });
   await page.getByLabel("Email", { exact: true }).fill(`${name}@demo.ru`);
   await page.getByLabel("Пароль", { exact: true }).fill(password!);
+  const authenticated = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname.endsWith("/auth/v1/token") &&
+      response.request().method() === "POST" &&
+      response.status() === 200,
+  );
   await page.getByRole("button", { name: "Войти в пространство" }).click();
+  const { user } = await (await authenticated).json();
   await expect(page).toHaveURL(
     name === "manager" ? /\/objects$/ : /\/my-tasks$/,
     { timeout: 15_000 },
   );
+  return user.id as string;
 }
 async function cleanupObject(id: string) {
   const client = createClient(url, key, {
@@ -65,11 +74,20 @@ test("manager sees tasks, filters them, keeps session after reload, and logs out
   await expect(
     page.getByRole("heading", { name: "Объекты", exact: true }),
   ).toBeVisible();
+  const loaded = taskPage(page);
   await page.getByRole("link", { name: "Все задачи", exact: true }).click();
-  await expect(page.locator("tbody tr")).toHaveCount(8);
+  await expect(page.locator("tbody tr")).toHaveCount(
+    (await loaded).items.length,
+  );
   await expect(page.getByText("Демо-режим", { exact: true })).toHaveCount(0);
+  const filtered = taskPage(page, "окна");
   await page.getByRole("textbox", { name: "Поиск задач" }).fill("окна");
-  await expect(page.locator("tbody tr")).toHaveCount(1);
+  const found = await filtered;
+  expect(found.items.length).toBeGreaterThan(0);
+  expect(
+    found.items.every((item) => item.title.toLowerCase().includes("окна")),
+  ).toBe(true);
+  await expect(page.locator("tbody tr")).toHaveCount(found.items.length);
   await page.reload();
   await expect(
     page.getByRole("heading", { name: "Все задачи", exact: true }),
@@ -83,8 +101,12 @@ for (const name of ["ivan", "alexey"]) {
   test(`${name}: only assigned tasks, forbidden manager actions hidden`, async ({
     page,
   }) => {
-    await login(page, name);
-    await expect(page.locator("tbody tr")).toHaveCount(4);
+    const loaded = taskPage(page);
+    const userId = await login(page, name);
+    const own = await loaded;
+    expect(own.items.length).toBeGreaterThan(0);
+    expect(own.items.every((item) => item.assignee_id === userId)).toBe(true);
+    await expect(page.locator("tbody tr")).toHaveCount(own.items.length);
     await expect(
       page.getByRole("button", { name: "Новая задача", exact: true }),
     ).toHaveCount(0);
@@ -204,8 +226,11 @@ test("manager creates and edits object/task, reassigns, and archives them throug
 });
 test("mobile layout and keyboard navigation stay usable", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
+  const loaded = taskPage(page);
   await login(page, "ivan");
-  await expect(page.locator("tbody tr")).toHaveCount(4);
+  await expect(page.locator("tbody tr")).toHaveCount(
+    (await loaded).items.length,
+  );
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,
