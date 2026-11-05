@@ -1,0 +1,25 @@
+# Install only this file in the existing proxy's dynamic directory.
+# The app and coolify-proxy share the external Docker network "coolify".
+http:
+  routers:
+    testsupabase-http:
+      entryPoints: [http]
+      rule: Host(`testsupabase.dmitriy-borisenko.ru`)
+      middlewares: [testsupabase-https]
+      service: testsupabase
+    testsupabase-https:
+      entryPoints: [https]
+      rule: Host(`testsupabase.dmitriy-borisenko.ru`)
+      service: testsupabase
+      tls:
+        certResolver: letsencrypt
+  middlewares:
+    testsupabase-https:
+      redirectScheme:
+        scheme: https
+        permanent: true
+  services:
+    testsupabase:
+      loadBalancer:
+        servers:
+          - url: http://testsupabase-web:8080

@@ -1,0 +1,58 @@
+{
+  "name": "objects-and-tasks-crm",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "test": "vitest run",
+    "typecheck": "tsc -b",
+    "test:db": "node tests/database/validate-local.mjs",
+    "test:cloud": "node --env-file=.env.supabase tests/integration/supabase-cloud.mjs",
+    "test:e2e": "node --env-file=.env.supabase node_modules/@playwright/test/cli.js test",
+    "test:all": "npm run typecheck && npm run test && npm run test:db && npm run test:cloud && npm run test:e2e && npm run build && npm run test:secrets",
+    "test:secrets": "node tests/security/client-secrets.mjs"
+  },
+  "dependencies": {
+    "@fontsource-variable/manrope": "^5.3.0",
+    "@hookform/resolvers": "^5.2.2",
+    "@radix-ui/react-alert-dialog": "^1.1.15",
+    "@reduxjs/toolkit": "^2.9.0",
+    "@supabase/supabase-js": "2.109.0",
+    "@tanstack/react-query": "^5.90.0",
+    "@tanstack/react-table": "^8.21.3",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.468.0",
+    "radix-ui": "^1.8.1",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-hook-form": "^7.66.0",
+    "react-redux": "^9.2.0",
+    "react-router": "^7.9.5",
+    "sonner": "^2.0.7",
+    "tailwind-merge": "^3.3.1",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.15",
+    "@playwright/test": "1.64.1",
+    "@tailwindcss/vite": "^4.1.17",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
+    "@types/node": "^22.19.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.1.0",
+    "jsdom": "^26.1.0",
+    "tailwindcss": "^4.1.17",
+    "typescript": "~5.9.3",
+    "vite": "^7.2.2",
+    "vitest": "^4.1.12"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}

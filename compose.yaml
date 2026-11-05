@@ -1,0 +1,23 @@
+name: testsupabase
+services:
+  web:
+    image: testsupabase:${RELEASE_TAG:-local}
+    container_name: testsupabase-web
+    build:
+      context: .
+      args:
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:?Set the public project URL}
+        VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY:?Set the public key}
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m,uid=101,gid=101
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 128
+    mem_limit: 256m
+    networks: [proxy]
+networks:
+  proxy:
+    external: true
+    name: coolify

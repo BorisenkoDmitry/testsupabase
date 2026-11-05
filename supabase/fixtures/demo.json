@@ -1,0 +1,352 @@
+{
+  "users": [
+    {
+      "id": "user-manager",
+      "name": "Александр Волков",
+      "email": "manager@demo.ru",
+      "role": "manager"
+    },
+    {
+      "id": "user-ivan",
+      "name": "Иван Петров",
+      "email": "ivan@demo.ru",
+      "role": "executor"
+    },
+    {
+      "id": "user-alexey",
+      "name": "Алексей Смирнов",
+      "email": "alexey@demo.ru",
+      "role": "executor"
+    }
+  ],
+  "database": {
+    "version": 1,
+    "objects": [
+      {
+        "id": "object-1",
+        "name": "ЖК «Сосновый»",
+        "address": "Москва, ул. Лесная, 15 · Корпус 2",
+        "createdAt": "2026-10-20T09:00:00Z"
+      },
+      {
+        "id": "object-2",
+        "name": "Бизнес-центр «Горизонт»",
+        "address": "Москва, Ленинградский проспект, 36",
+        "createdAt": "2026-10-22T09:00:00Z"
+      },
+      {
+        "id": "object-3",
+        "name": "Дом в Репино",
+        "address": "Московская область, пос. Репино, участок 8",
+        "createdAt": "2026-10-25T09:00:00Z"
+      }
+    ],
+    "tasks": [
+      {
+        "id": "task-1",
+        "title": "Смонтировать электропроводку на первом этаже",
+        "objectId": "object-1",
+        "assigneeId": "user-ivan",
+        "status": "in_progress",
+        "description": "Проложить кабель по согласованной схеме. Проверить маркировку линий и подготовить фотографии перед закрытием штроб.",
+        "authorId": "user-manager",
+        "createdAt": "2026-11-01T08:00:00Z"
+      },
+      {
+        "id": "task-2",
+        "title": "Проверить гидроизоляцию подвала",
+        "objectId": "object-1",
+        "assigneeId": "user-alexey",
+        "status": "review",
+        "description": "Проверить примыкания и швы. Приложить результаты осмотра в комментарии при отправке на проверку.",
+        "authorId": "user-manager",
+        "createdAt": "2026-11-02T08:00:00Z"
+      },
+      {
+        "id": "task-3",
+        "title": "Установить окна в подъезде № 1",
+        "objectId": "object-1",
+        "assigneeId": "user-ivan",
+        "status": "new",
+        "description": "Установить оконные блоки на втором этаже. Проверить геометрию и герметичность монтажных швов.",
+        "authorId": "user-manager",
+        "createdAt": "2026-11-03T08:00:00Z"
+      },
+      {
+        "id": "task-4",
+        "title": "Исправить стяжку в холле",
+        "objectId": "object-2",
+        "assigneeId": "user-alexey",
+        "status": "revision",
+        "description": "Устранить неровности основания перед укладкой напольного покрытия.",
+        "authorId": "user-manager",
+        "createdAt": "2026-11-01T08:00:00Z"
+      },
+      {
+        "id": "task-5",
+        "title": "Подготовить стены под покраску",
+        "objectId": "object-2",
+        "assigneeId": "user-ivan",
+        "status": "new",
+        "description": "Зашпаклевать стены в кабинетах 201–204. После высыхания выполнить шлифовку.",
+        "authorId": "user-manager",
+        "createdAt": "2026-11-02T08:00:00Z"
+      },
+      {
+        "id": "task-6",
+        "title": "Принять поставку вентиляционного оборудования",
+        "objectId": "object-2",
+        "assigneeId": "user-alexey",
+        "status": "accepted",
+        "description": "Проверить комплектность по накладной и осмотреть оборудование на наличие повреждений.",
+        "authorId": "user-manager",
+        "createdAt": "2026-11-03T08:00:00Z"
+      },
+      {
+        "id": "task-7",
+        "title": "Собрать опалубку фундамента",
+        "objectId": "object-3",
+        "assigneeId": "user-ivan",
+        "status": "in_progress",
+        "description": "Выполнить сборку по проекту. Проверить диагонали и закрепление щитов.",
+        "authorId": "user-manager",
+        "createdAt": "2026-11-01T08:00:00Z"
+      },
+      {
+        "id": "task-8",
+        "title": "Проверить разметку участка",
+        "objectId": "object-3",
+        "assigneeId": "user-alexey",
+        "status": "accepted",
+        "description": "Сверить оси и отметки с геодезическим планом.",
+        "authorId": "user-manager",
+        "createdAt": "2026-11-02T08:00:00Z"
+      }
+    ],
+    "history": [
+      {
+        "id": "history-task-1-0",
+        "taskId": "task-1",
+        "actorId": "user-manager",
+        "fromStatus": null,
+        "toStatus": "new",
+        "comment": null,
+        "createdAt": "2026-11-01T08:00:00.000Z"
+      },
+      {
+        "id": "history-task-1-1",
+        "taskId": "task-1",
+        "actorId": "user-ivan",
+        "fromStatus": "new",
+        "toStatus": "in_progress",
+        "comment": null,
+        "createdAt": "2026-11-01T09:00:00.000Z"
+      },
+      {
+        "id": "history-task-2-0",
+        "taskId": "task-2",
+        "actorId": "user-manager",
+        "fromStatus": null,
+        "toStatus": "new",
+        "comment": null,
+        "createdAt": "2026-11-02T08:00:00.000Z"
+      },
+      {
+        "id": "history-task-2-1",
+        "taskId": "task-2",
+        "actorId": "user-alexey",
+        "fromStatus": "new",
+        "toStatus": "in_progress",
+        "comment": null,
+        "createdAt": "2026-11-02T09:00:00.000Z"
+      },
+      {
+        "id": "history-task-2-2",
+        "taskId": "task-2",
+        "actorId": "user-alexey",
+        "fromStatus": "in_progress",
+        "toStatus": "review",
+        "comment": null,
+        "createdAt": "2026-11-02T10:00:00.000Z"
+      },
+      {
+        "id": "history-task-3-0",
+        "taskId": "task-3",
+        "actorId": "user-manager",
+        "fromStatus": null,
+        "toStatus": "new",
+        "comment": null,
+        "createdAt": "2026-11-03T08:00:00.000Z"
+      },
+      {
+        "id": "history-task-4-0",
+        "taskId": "task-4",
+        "actorId": "user-manager",
+        "fromStatus": null,
+        "toStatus": "new",
+        "comment": null,
+        "createdAt": "2026-11-01T08:00:00.000Z"
+      },
+      {
+        "id": "history-task-4-1",
+        "taskId": "task-4",
+        "actorId": "user-alexey",
+        "fromStatus": "new",
+        "toStatus": "in_progress",
+        "comment": null,
+        "createdAt": "2026-11-01T09:00:00.000Z"
+      },
+      {
+        "id": "history-task-4-2",
+        "taskId": "task-4",
+        "actorId": "user-alexey",
+        "fromStatus": "in_progress",
+        "toStatus": "review",
+        "comment": null,
+        "createdAt": "2026-11-01T10:00:00.000Z"
+      },
+      {
+        "id": "history-task-4-3",
+        "taskId": "task-4",
+        "actorId": "user-manager",
+        "fromStatus": "review",
+        "toStatus": "revision",
+        "comment": "У входной группы остался перепад около 8 мм. Выровняйте участок и повторно отправьте на проверку.",
+        "createdAt": "2026-11-01T11:00:00.000Z"
+      },
+      {
+        "id": "history-task-5-0",
+        "taskId": "task-5",
+        "actorId": "user-manager",
+        "fromStatus": null,
+        "toStatus": "new",
+        "comment": null,
+        "createdAt": "2026-11-02T08:00:00.000Z"
+      },
+      {
+        "id": "history-task-6-0",
+        "taskId": "task-6",
+        "actorId": "user-manager",
+        "fromStatus": null,
+        "toStatus": "new",
+        "comment": null,
+        "createdAt": "2026-11-03T08:00:00.000Z"
+      },
+      {
+        "id": "history-task-6-1",
+        "taskId": "task-6",
+        "actorId": "user-alexey",
+        "fromStatus": "new",
+        "toStatus": "in_progress",
+        "comment": null,
+        "createdAt": "2026-11-03T09:00:00.000Z"
+      },
+      {
+        "id": "history-task-6-2",
+        "taskId": "task-6",
+        "actorId": "user-alexey",
+        "fromStatus": "in_progress",
+        "toStatus": "review",
+        "comment": null,
+        "createdAt": "2026-11-03T10:00:00.000Z"
+      },
+      {
+        "id": "history-task-6-3",
+        "taskId": "task-6",
+        "actorId": "user-manager",
+        "fromStatus": "review",
+        "toStatus": "accepted",
+        "comment": null,
+        "createdAt": "2026-11-03T11:00:00.000Z"
+      },
+      {
+        "id": "history-task-7-0",
+        "taskId": "task-7",
+        "actorId": "user-manager",
+        "fromStatus": null,
+        "toStatus": "new",
+        "comment": null,
+        "createdAt": "2026-11-01T08:00:00.000Z"
+      },
+      {
+        "id": "history-task-7-1",
+        "taskId": "task-7",
+        "actorId": "user-ivan",
+        "fromStatus": "new",
+        "toStatus": "in_progress",
+        "comment": null,
+        "createdAt": "2026-11-01T09:00:00.000Z"
+      },
+      {
+        "id": "history-task-8-0",
+        "taskId": "task-8",
+        "actorId": "user-manager",
+        "fromStatus": null,
+        "toStatus": "new",
+        "comment": null,
+        "createdAt": "2026-11-02T08:00:00.000Z"
+      },
+      {
+        "id": "history-task-8-1",
+        "taskId": "task-8",
+        "actorId": "user-alexey",
+        "fromStatus": "new",
+        "toStatus": "in_progress",
+        "comment": null,
+        "createdAt": "2026-11-02T09:00:00.000Z"
+      },
+      {
+        "id": "history-task-8-2",
+        "taskId": "task-8",
+        "actorId": "user-alexey",
+        "fromStatus": "in_progress",
+        "toStatus": "review",
+        "comment": null,
+        "createdAt": "2026-11-02T10:00:00.000Z"
+      },
+      {
+        "id": "history-task-8-3",
+        "taskId": "task-8",
+        "actorId": "user-manager",
+        "fromStatus": "review",
+        "toStatus": "accepted",
+        "comment": null,
+        "createdAt": "2026-11-02T11:00:00.000Z"
+      }
+    ]
+  },
+  "ids": {
+    "object-1": "09039b60-b56c-4174-86ed-1b8a8ddca04f",
+    "object-2": "a39395e2-63e0-4632-817a-3610b05fb4ae",
+    "object-3": "65a55476-312e-4327-8bfe-6f857afcd440",
+    "task-1": "f45dd046-a0fe-4f0a-8d75-00db64bcae5c",
+    "task-2": "03330045-04d2-4204-8e26-11eb07f139de",
+    "task-3": "7ee4b411-dbf8-4991-84c1-be1e7f7ab0a6",
+    "task-4": "2540ee6e-b3c6-4ee5-8ac1-89200a4abfaf",
+    "task-5": "a8d5a2c7-e3e1-4f2b-8e3e-d3837dd2963c",
+    "task-6": "b1de8fd9-a4da-4415-8c83-7541a2475d5f",
+    "task-7": "d72031f6-a2c1-4c9e-8511-1d038f43c04e",
+    "task-8": "ca009f2c-02b3-4886-8ca3-1dade241a06d",
+    "history-task-1-0": "d141d5b3-d2f9-43fe-841a-2a572d0170e9",
+    "history-task-1-1": "5e40a5fe-b327-48d0-83ff-11ccd0a9ada9",
+    "history-task-2-0": "a2063d0d-f820-471f-8182-5dafe68e4910",
+    "history-task-2-1": "0d3e932f-07fd-4625-842a-2084a553351e",
+    "history-task-2-2": "ba26f2b0-66bd-4b4a-812f-0918deb04ceb",
+    "history-task-3-0": "087f86a9-5d89-43fa-8c6d-97b25d9b38f5",
+    "history-task-4-0": "1be9cd98-fee8-48f9-8f82-e45ebf3eeea3",
+    "history-task-4-1": "c3a06f08-f5d0-4945-8316-5b4a8c1ac578",
+    "history-task-4-2": "c00bfd01-765a-4aaf-83bb-a8f4e7cb37b6",
+    "history-task-4-3": "bc581dd3-442e-47e8-84ff-8fc5131c15ef",
+    "history-task-5-0": "221bb681-c907-4eca-805f-66fb045b034d",
+    "history-task-6-0": "7322bf32-937a-4c27-8416-1052d9310c93",
+    "history-task-6-1": "08fe0afb-c0a9-4189-85de-3f2792694527",
+    "history-task-6-2": "a7d2202c-48fd-4b38-8421-2f7bbacabfe2",
+    "history-task-6-3": "7b49e144-792e-4192-8766-292076653028",
+    "history-task-7-0": "2b47268a-b8ca-45e2-88b2-78cbbb8c928a",
+    "history-task-7-1": "0bf89525-8a29-4270-8cf4-b8c93dd2cefe",
+    "history-task-8-0": "b179be8f-bd4c-4571-8855-108c7e8338d6",
+    "history-task-8-1": "9c276c7e-0965-4bec-873d-196e7028bf72",
+    "history-task-8-2": "d8c614d5-5056-4782-8280-d2bef8c4c7b1",
+    "history-task-8-3": "f0df00e0-477b-4ed2-8e42-4029b1867cea"
+  }
+}
