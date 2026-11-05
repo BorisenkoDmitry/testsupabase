@@ -7,8 +7,10 @@ import { Toaster } from "sonner";
 import { SessionBootstrap } from "@/features/auth";
 import { store } from "./store";
 import { router } from "./router";
+import { installChunkRecovery } from "@/shared/lib/chunk-recovery";
 import "./styles.css";
 import "@fontsource-variable/manrope";
+installChunkRecovery();
 const client = new QueryClient({
   defaultOptions: {
     queries: { staleTime: 30_000, retry: false, refetchOnWindowFocus: false },

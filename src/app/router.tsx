@@ -9,6 +9,7 @@ import { QueryErrorResetBoundary } from "@tanstack/react-query";
 import { RequireAuth } from "@/features/auth";
 import { AppShell } from "@/widgets/app-shell";
 import { ErrorState, LoadingScreen } from "@/shared/ui/states";
+import { isChunkLoadError } from "@/shared/lib/chunk-recovery";
 const LoginPage = lazy(() => import("@/pages/login"));
 const ObjectsPage = lazy(() => import("@/pages/objects"));
 const ObjectDetailPage = lazy(() => import("@/pages/object-detail"));
@@ -18,16 +19,23 @@ const NotFoundPage = lazy(() => import("@/pages/not-found"));
 function RouteError() {
   const error = useRouteError();
   const revalidator = useRevalidator();
+  const chunkError = isChunkLoadError(error);
   return (
     <QueryErrorResetBoundary>
       {({ reset }) => (
         <ErrorState
           message={
-            error instanceof Error
-              ? error.message
-              : "Проверьте адрес страницы и попробуйте ещё раз."
+            chunkError
+              ? "Не удалось загрузить страницу приложения. Проверьте соединение и попробуйте ещё раз."
+              : error instanceof Error
+                ? error.message
+                : "Проверьте адрес страницы и попробуйте ещё раз."
           }
           onRetry={() => {
+            if (chunkError) {
+              window.location.reload();
+              return;
+            }
             reset();
             revalidator.revalidate();
           }}
