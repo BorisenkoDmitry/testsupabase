@@ -8,17 +8,39 @@ import type {
 } from "../contracts";
 import { apiError, CrmError } from "../errors";
 import type { Database } from "./database.types";
+import {
+  taskPageSchema,
+  objectPageSchema,
+  profileListSchema,
+  objectOptionsSchema,
+  historyPageSchema,
+} from "./list-schemas";
 
 type Row<T extends keyof Database["public"]["Tables"]> =
   Database["public"]["Tables"][T]["Row"];
-const objectDto = (r: Row<"objects">): ConstructionObject => ({
+const objectDto = (
+  r: Pick<Row<"objects">, "id" | "name" | "address" | "created_at" | "version">,
+): ConstructionObject => ({
   id: r.id,
   name: r.name,
   address: r.address,
   createdAt: r.created_at,
   version: r.version,
 });
-const taskDto = (r: Row<"tasks">): Task => ({
+const taskDto = (
+  r: Pick<
+    Row<"tasks">,
+    | "id"
+    | "title"
+    | "description"
+    | "object_id"
+    | "assignee_id"
+    | "author_id"
+    | "status"
+    | "created_at"
+    | "version"
+  >,
+): Task => ({
   id: r.id,
   title: r.title,
   description: r.description,
@@ -29,7 +51,9 @@ const taskDto = (r: Row<"tasks">): Task => ({
   createdAt: r.created_at,
   version: r.version,
 });
-const userDto = (r: Row<"profiles">): User => ({
+const userDto = (
+  r: Pick<Row<"profiles">, "id" | "full_name" | "email" | "role" | "is_active">,
+): User => ({
   id: r.id,
   name: r.full_name,
   email: r.email,
@@ -46,24 +70,6 @@ const historyDto = (r: Row<"task_history">): TaskHistory => ({
   createdAt: r.created_at,
 });
 
-// Read every page: PostgREST limits each response even when .select() has no limit.
-async function pages<T>(
-  load: (
-    from: number,
-    to: number,
-  ) => PromiseLike<{
-    data: T[] | null;
-    error: { message: string; code?: string } | null;
-  }>,
-): Promise<T[]> {
-  const rows: T[] = [];
-  for (let from = 0; ; from += 500) {
-    const { data, error } = await load(from, from + 499);
-    if (error) throw apiError(error);
-    rows.push(...(data ?? []));
-    if (!data || data.length < 500) return rows;
-  }
-}
 function expected(version?: number): number {
   if (!Number.isSafeInteger(version) || version! < 1)
     throw new CrmError("Неизвестна версия записи. Обновите страницу.", "40001");
@@ -144,26 +150,50 @@ export function createSupabaseApi(client: SupabaseClient<Database>): CrmApi {
       },
     },
     users: {
-      async list() {
-        return (
-          await pages((from, to) =>
-            client.from("profiles").select("*").order("id").range(from, to),
-          )
-        ).map(userDto);
+      async list(assigneesOnly = false, signal) {
+        const data = await result(
+          client
+            .rpc("crm_list_options", {
+              p_kind: assigneesOnly ? "assignees" : "profiles",
+            })
+            .abortSignal(signal ?? AbortSignal.timeout(30000)),
+        );
+        return profileListSchema.parse(data).map(userDto);
       },
     },
     objects: {
-      async list() {
-        return (
-          await pages((from, to) =>
+      async list(request = {}, signal) {
+        const data = objectPageSchema.parse(
+          await result(
             client
-              .from("objects")
-              .select("*")
-              .order("created_at", { ascending: false })
-              .order("id")
-              .range(from, to),
-          )
-        ).map(objectDto);
+              .rpc("crm_list_objects", {
+                p_search: request.search ?? "",
+                p_sort: request.sortBy ?? "createdAt",
+                p_direction: request.sortDirection ?? "desc",
+                p_page: request.pageIndex ?? 0,
+                p_page_size: request.pageSize ?? 10,
+              })
+              .abortSignal(signal ?? AbortSignal.timeout(30000)),
+          ),
+        );
+        return {
+          ...data,
+          items: data.items.map((r) => ({
+            ...objectDto(r),
+            taskCount: r.task_count,
+            acceptedCount: r.accepted_count,
+            reviewCount: r.review_count,
+          })),
+        };
+      },
+      async options(signal) {
+        return objectOptionsSchema.parse(
+          await result(
+            client
+              .rpc("crm_list_options", { p_kind: "objects" })
+              .abortSignal(signal ?? AbortSignal.timeout(30000)),
+          ),
+        );
       },
       async get(id) {
         return objectDto(
@@ -200,35 +230,50 @@ export function createSupabaseApi(client: SupabaseClient<Database>): CrmApi {
       },
     },
     tasks: {
-      async list() {
-        return (
-          await pages((from, to) =>
+      async list(request = {}, signal) {
+        const data = taskPageSchema.parse(
+          await result(
             client
-              .from("tasks")
-              .select("*")
-              .order("created_at", { ascending: false })
-              .order("id")
-              .range(from, to),
-          )
-        ).map(taskDto);
+              .rpc("crm_list_tasks", {
+                p_search: request.search ?? "",
+                p_object_id: request.objectId,
+                p_status: request.status,
+                p_assignee_id: request.assigneeId,
+                p_sort: request.sortBy ?? "createdAt",
+                p_direction: request.sortDirection ?? "desc",
+                p_page: request.pageIndex ?? 0,
+                p_page_size: request.pageSize ?? 10,
+              })
+              .abortSignal(signal ?? AbortSignal.timeout(30000)),
+          ),
+        );
+        return {
+          ...data,
+          items: data.items.map((r) => ({
+            ...taskDto(r),
+            objectName: r.object_name,
+            assigneeName: r.assignee_name,
+          })),
+        };
       },
       async get(id) {
         return taskDto(
           await result(client.from("tasks").select("*").eq("id", id).single()),
         );
       },
-      async history(id) {
-        return (
-          await pages((from, to) =>
+      async history(id, request = {}, signal) {
+        const data = historyPageSchema.parse(
+          await result(
             client
-              .from("task_history")
-              .select("*")
-              .eq("task_id", id)
-              .order("created_at")
-              .order("id")
-              .range(from, to),
-          )
-        ).map(historyDto);
+              .rpc("crm_task_history_page", {
+                p_task_id: id,
+                p_page: request.pageIndex ?? 0,
+                p_page_size: request.pageSize ?? 10,
+              })
+              .abortSignal(signal ?? AbortSignal.timeout(30000)),
+          ),
+        );
+        return { ...data, items: data.items.map(historyDto) };
       },
       async save(input, id, version) {
         const fields = {

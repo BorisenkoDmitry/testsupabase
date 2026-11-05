@@ -1,145 +1,104 @@
 // @vitest-environment jsdom
-import type { PropsWithChildren } from "react";
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
-import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { afterEach, it, expect, vi } from "vitest";
+import type { PropsWithChildren } from "react";
 import { createSeed, demoUsers } from "@/shared/api/mock/seed";
+import { mockTasks } from "@/shared/api/mock/list-simulator";
 import {
-  filtersChanged,
-  filtersReset,
   taskFiltersReducer,
+  filtersChanged,
+  paginationChanged,
+  sortingChanged,
 } from "@/features/task-filters";
 import { useTaskTable } from "@/widgets/task-list/model/use-task-table";
-
-beforeEach(() => vi.useFakeTimers());
-afterEach(() => {
-  cleanup();
-  vi.useRealTimers();
-});
-function setup(showObject = true, manager = true) {
+import type { TaskListProps } from "@/widgets/task-list/model/types";
+afterEach(cleanup);
+function setup(manager = true) {
   const store = configureStore({
     reducer: { taskFilters: taskFiltersReducer },
   });
   const db = createSeed();
-  const props = {
-    tasks: db.tasks,
+  const page = mockTasks(db.tasks, db.objects, demoUsers, { pageSize: 2 });
+  const props: TaskListProps = {
+    page,
     objects: db.objects,
     users: demoUsers,
     manager,
-    showObject,
+    showObject: true,
+    sorting: [],
+    onSortingChange: vi.fn(),
+    onPaginationChange: vi.fn(),
+    isFetching: false,
   };
   const wrapper = ({ children }: PropsWithChildren) => (
     <Provider store={store}>{children}</Provider>
   );
-  return { store, ...renderHook(() => useTaskTable(props), { wrapper }) };
+  return {
+    store,
+    props,
+    ...renderHook((p) => useTaskTable(p), { initialProps: props, wrapper }),
+  };
 }
-it("combines object, status, executor and debounced search, then resets all filters", () => {
-  const { result, store } = setup();
-  expect(result.current.table.getRowModel().rows).toHaveLength(8);
-  act(() => {
+it("renders exactly the server page despite search, filters, sort and page position", () => {
+  const { store, props, result, rerender } = setup();
+  const ids = props.page.items.map((t) => t.id);
+  act(() =>
     store.dispatch(
       filtersChanged({
-        objectId: "object-1",
-        assigneeId: "user-ivan",
-        status: "new",
+        search: "NO MATCH",
+        status: "accepted",
+        assigneeId: "other",
+        objectId: "other",
       }),
-    );
+    ),
+  );
+  rerender({
+    ...props,
+    sorting: [{ id: "title", desc: false }],
+    page: { ...props.page, pageIndex: 3, total: 99 },
   });
-  expect(result.current.table.getRowModel().rows.map((row) => row.id)).toEqual([
-    "task-3",
-  ]);
-  act(() => {
-    store.dispatch(filtersChanged({ search: "несуществующая" }));
-  });
-  expect(result.current.table.getRowModel().rows).toHaveLength(1);
-  act(() => vi.advanceTimersByTime(300));
-  expect(result.current.table.getRowModel().rows).toHaveLength(0);
-  act(() => {
-    store.dispatch(filtersReset());
-    vi.advanceTimersByTime(300);
-  });
-  act(() => vi.advanceTimersByTime(300));
-  expect(result.current.table.getRowModel().rows).toHaveLength(8);
+  expect(result.current.table.getRowModel().rows.map((r) => r.id)).toEqual(ids);
+  expect(result.current.table.options.manualFiltering).toBe(true);
+  expect(result.current.table.options.manualSorting).toBe(true);
+  expect(result.current.table.options.manualPagination).toBe(true);
+  expect(result.current.table.getRowCount()).toBe(99);
+  expect(result.current.table.getPageCount()).toBe(50);
 });
-it("ignores the global object filter inside an object card and hides the assignee column for executors", () => {
-  const { result, store } = setup(false, false);
-  act(() => {
-    store.dispatch(
-      filtersChanged({ objectId: "object-2", assigneeId: "user-alexey" }),
-    );
-  });
-  expect(result.current.table.getRowModel().rows).toHaveLength(8);
+it("sorting and pagination emit requests without transforming current rows", () => {
+  const { props, result } = setup();
+  const before = result.current.table.getRowModel().rows.map((r) => r.id);
+  act(() => result.current.table.getColumn("title")!.toggleSorting());
+  expect(props.onSortingChange).toHaveBeenCalledTimes(1);
+  act(() => result.current.table.nextPage());
+  expect(props.onPaginationChange).toHaveBeenCalledTimes(1);
+  expect(result.current.table.getRowModel().rows.map((r) => r.id)).toEqual(
+    before,
+  );
+});
+it("hides the assignee column for executors", () => {
+  const { result } = setup(false);
   expect(
     result.current.table
       .getVisibleLeafColumns()
-      .some((column) => column.id === "assigneeId"),
+      .some((c) => c.id === "assigneeId"),
   ).toBe(false);
 });
-
-it("cycles title sorting through ascending, descending and the original order", () => {
-  const { result } = setup();
-  const original = result.current.table.getRowModel().rows.map((row) => row.id);
-  const titles = () =>
-    result.current.table.getRowModel().rows.map((row) => row.original.title);
-  const expected = [...titles()].sort(
-    new Intl.Collator("ru", { numeric: true, sensitivity: "base" }).compare,
+it("filter, sort and page-size changes reset the requested page", () => {
+  const { store } = setup();
+  store.dispatch(
+    paginationChanged({ pageIndex: 4, pageSize: 10, scopeKey: "all" }),
   );
-  act(() => result.current.table.getColumn("title")!.toggleSorting());
-  expect(titles()).toEqual(expected);
-  act(() => result.current.table.getColumn("title")!.toggleSorting());
-  expect(titles()).toEqual([...expected].reverse());
-  act(() => result.current.table.getColumn("title")!.toggleSorting());
-  expect(result.current.table.getRowModel().rows.map((row) => row.id)).toEqual(
-    original,
+  store.dispatch(filtersChanged({ status: "new" }));
+  expect(store.getState().taskFilters.pageIndex).toBe(0);
+  store.dispatch(
+    paginationChanged({ pageIndex: 3, pageSize: 10, scopeKey: "all" }),
   );
-});
-
-it("sorts assignees by displayed Russian names, not their IDs", () => {
-  const { result } = setup();
-  act(() => result.current.table.getColumn("assigneeId")!.toggleSorting());
-  expect(
-    result.current.table
-      .getRowModel()
-      .rows.map((row) => row.original.assigneeId),
-  ).toEqual([
-    "user-alexey",
-    "user-alexey",
-    "user-alexey",
-    "user-alexey",
-    "user-ivan",
-    "user-ivan",
-    "user-ivan",
-    "user-ivan",
-  ]);
-});
-
-it("sorts status in workflow order and date from newest first, including after filtering", () => {
-  const { result, store } = setup();
-  act(() => result.current.table.getColumn("status")!.toggleSorting());
-  expect(
-    result.current.table.getRowModel().rows.map((row) => row.original.status),
-  ).toEqual([
-    "new",
-    "new",
-    "in_progress",
-    "in_progress",
-    "review",
-    "revision",
-    "accepted",
-    "accepted",
-  ]);
-  act(() => result.current.table.getColumn("createdAt")!.toggleSorting());
-  const timestamps = result.current.table
-    .getRowModel()
-    .rows.map((row) => Date.parse(row.original.createdAt));
-  expect(timestamps).toEqual([...timestamps].sort((a, b) => b - a));
-  act(() => {
-    store.dispatch(filtersChanged({ objectId: "object-1" }));
-  });
-  expect(result.current.table.getRowModel().rows.map((row) => row.id)).toEqual([
-    "task-3",
-    "task-2",
-    "task-1",
-  ]);
+  store.dispatch(sortingChanged({ sortBy: "title", sortDirection: "asc" }));
+  expect(store.getState().taskFilters.pageIndex).toBe(0);
+  store.dispatch(
+    paginationChanged({ pageIndex: 3, pageSize: 20, scopeKey: "all" }),
+  );
+  expect(store.getState().taskFilters.pageIndex).toBe(0);
 });

@@ -1,8 +1,8 @@
 import { queryOptions } from "@tanstack/react-query";
 import { api } from "@/shared/api";
 export type { User, Role } from "@/shared/api";
-export const usersQuery = (userId: string) =>
+export const usersQuery = (userId: string, assigneesOnly = false) =>
   queryOptions({
-    queryKey: ["crm", userId, "users"],
-    queryFn: () => api.users.list(),
+    queryKey: ["crm", userId, "users", assigneesOnly],
+    queryFn: ({ signal }) => api.users.list(assigneesOnly, signal),
   });

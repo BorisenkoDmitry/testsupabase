@@ -6,6 +6,7 @@ import {
   type MockDatabase,
 } from "./seed";
 import { assertTransition } from "@/shared/lib/task-workflow";
+import { mockTasks, mockObjects, mockPage } from "./list-simulator";
 
 const DATABASE_KEY = "kontur.mock.database.v1";
 const SESSION_KEY = "kontur.mock.session.v1";
@@ -92,18 +93,32 @@ export function createMockApi(storage: Storage = localStorage): CrmApi {
       },
     },
     users: {
-      async list() {
+      async list(assigneesOnly = false) {
         await delay();
         actor();
-        return structuredClone(demoUsers);
+        return structuredClone(
+          demoUsers.filter((u) => !assigneesOnly || u.role === "executor"),
+        );
       },
     },
     objects: {
-      async list() {
+      async list(request = {}) {
         await delay();
         const db = read();
         actor();
-        return db.objects.filter((obj) => visibleObject(db, obj.id));
+        return mockObjects(
+          db.objects.filter((obj) => visibleObject(db, obj.id)),
+          db.tasks.filter(canReadTask),
+          request,
+        );
+      },
+      async options() {
+        await delay();
+        actor();
+        const db = read();
+        return db.objects
+          .filter((o) => visibleObject(db, o.id))
+          .map(({ id, name }) => ({ id, name }));
       },
       async get(id) {
         await delay();
@@ -153,22 +168,31 @@ export function createMockApi(storage: Storage = localStorage): CrmApi {
       },
     },
     tasks: {
-      async list() {
+      async list(request = {}) {
         await delay();
         actor();
-        return read().tasks.filter(canReadTask);
+        const db = read();
+        return mockTasks(
+          db.tasks.filter(canReadTask),
+          db.objects,
+          demoUsers,
+          request,
+        );
       },
       async get(id) {
         await delay();
         return taskById(read(), id);
       },
-      async history(id) {
+      async history(id, request = {}) {
         await delay();
         const db = read();
         taskById(db, id);
-        return db.history
-          .filter((event) => event.taskId === id)
-          .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+        return mockPage(
+          db.history
+            .filter((event) => event.taskId === id)
+            .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+          request,
+        );
       },
       async save(input, id) {
         await delay();

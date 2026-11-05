@@ -1,4 +1,6 @@
 import { Link, useParams } from "react-router";
+import { useState } from "react";
+import { Pagination } from "@/shared/ui/pagination";
 import { useSuspenseQuery, useSuspenseQueries } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
 import { useSession } from "@/entities/session";
@@ -14,13 +16,18 @@ import { TaskMetadata } from "./ui/task-metadata";
 export default function TaskDetailPage() {
   const { id = "" } = useParams();
   const { user } = useSession();
+  const [historyPageIndex, setHistoryPageIndex] = useState(0);
+  const [historyPageSize, setHistoryPageSize] = useState(10);
   const { data: task } = useSuspenseQuery(taskQuery(user!.id, id));
   const [{ data: object }, { data: users }, { data: history }] =
     useSuspenseQueries({
       queries: [
         objectQuery(user!.id, task.objectId),
         usersQuery(user!.id),
-        historyQuery(user!.id, id),
+        historyQuery(user!.id, id, {
+          pageIndex: historyPageIndex,
+          pageSize: historyPageSize,
+        }),
       ],
     });
   const manager = user!.role === "manager";
@@ -63,7 +70,20 @@ export default function TaskDetailPage() {
             </p>
             <TaskActions task={task} />
           </section>
-          <TaskHistoryPanel history={history} users={users} />
+          <TaskHistoryPanel
+            history={history.items}
+            total={history.total}
+            users={users}
+          />
+          <Pagination
+            {...history}
+            label="Пагинация истории"
+            onPageChange={setHistoryPageIndex}
+            onPageSizeChange={(size) => {
+              setHistoryPageSize(size);
+              setHistoryPageIndex(0);
+            }}
+          />
         </div>
         <TaskMetadata task={task} object={object} users={users} />
       </div>

@@ -1,6 +1,6 @@
 import { Search, X } from "lucide-react";
 import { statusLabels, statusOrder } from "@/entities/task";
-import type { ConstructionObject } from "@/entities/object";
+import type { ObjectOption } from "@/entities/object";
 import type { User } from "@/entities/user";
 import {
   filtersChanged,
@@ -26,7 +26,7 @@ export function TaskToolbar({
   active,
 }: {
   users: User[];
-  objects: ConstructionObject[];
+  objects: ObjectOption[];
   manager: boolean;
   showObject: boolean;
   active: boolean;
@@ -40,6 +40,7 @@ export function TaskToolbar({
         <Input
           aria-label="Поиск задач"
           placeholder="Найти задачу…"
+          maxLength={200}
           value={filters.search}
           onChange={(e) => dispatch(filtersChanged({ search: e.target.value }))}
         />
@@ -95,13 +96,11 @@ export function TaskToolbar({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Все исполнители</SelectItem>
-              {users
-                .filter((user) => user.role === "executor")
-                .map((user) => (
-                  <SelectItem key={user.id} value={user.id}>
-                    {user.name}
-                  </SelectItem>
-                ))}
+              {users.map((user) => (
+                <SelectItem key={user.id} value={user.id}>
+                  {user.name}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         )}

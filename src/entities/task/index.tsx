@@ -1,6 +1,20 @@
 import { queryOptions } from "@tanstack/react-query";
-import { api, type TaskStatus } from "@/shared/api";
-export type { Task, TaskInput, TaskHistory, TaskStatus } from "@/shared/api";
+import {
+  api,
+  type TaskStatus,
+  type TaskListRequest,
+  type PageRequest,
+} from "@/shared/api";
+export type {
+  Task,
+  TaskInput,
+  TaskHistory,
+  TaskStatus,
+  TaskListItem,
+  TaskPage,
+  TaskListRequest,
+  TaskSummary,
+} from "@/shared/api";
 export { allowedTransitions } from "@/shared/lib/task-workflow";
 export const statusLabels: Record<TaskStatus, string> = {
   new: "Новая",
@@ -18,18 +32,22 @@ export function StatusBadge({ status }: { status: TaskStatus }) {
     </span>
   );
 }
-export const tasksQuery = (userId: string) =>
+export const tasksQuery = (userId: string, request: TaskListRequest = {}) =>
   queryOptions({
-    queryKey: ["crm", userId, "tasks"],
-    queryFn: () => api.tasks.list(),
+    queryKey: ["crm", userId, "tasks", request],
+    queryFn: ({ signal }) => api.tasks.list(request, signal),
   });
 export const taskQuery = (userId: string, id: string) =>
   queryOptions({
     queryKey: ["crm", userId, "task", id],
     queryFn: () => api.tasks.get(id),
   });
-export const historyQuery = (userId: string, id: string) =>
+export const historyQuery = (
+  userId: string,
+  id: string,
+  request: PageRequest = {},
+) =>
   queryOptions({
-    queryKey: ["crm", userId, "history", id],
-    queryFn: () => api.tasks.history(id),
+    queryKey: ["crm", userId, "history", id, request],
+    queryFn: ({ signal }) => api.tasks.history(id, request, signal),
   });

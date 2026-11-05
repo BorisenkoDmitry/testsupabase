@@ -11,7 +11,7 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { api, isConflict } from "@/shared/api";
 import { useSession } from "@/entities/session";
-import { objectsQuery } from "@/entities/object";
+import { objectOptionsQuery } from "@/entities/object";
 import { usersQuery } from "@/entities/user";
 import type { Task } from "@/entities/task";
 import { Button } from "@/shared/ui/button";
@@ -46,7 +46,7 @@ export function TaskFields({
 }) {
   const { user } = useSession();
   const [{ data: objects }, { data: users }] = useSuspenseQueries({
-    queries: [objectsQuery(user!.id), usersQuery(user!.id)],
+    queries: [objectOptionsQuery(user!.id), usersQuery(user!.id, true)],
   });
   const client = useQueryClient();
   const [expectedVersion] = useState(task?.version);
@@ -162,16 +162,11 @@ export function TaskFields({
                   <SelectValue placeholder="Кто выполнит задачу?" />
                 </SelectTrigger>
                 <SelectContent>
-                  {users
-                    .filter(
-                      (item) =>
-                        item.role === "executor" && item.isActive !== false,
-                    )
-                    .map((item) => (
-                      <SelectItem key={item.id} value={item.id}>
-                        {item.name}
-                      </SelectItem>
-                    ))}
+                  {users.map((item) => (
+                    <SelectItem key={item.id} value={item.id}>
+                      {item.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             )}

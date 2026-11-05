@@ -1,23 +1,17 @@
 import { Link } from "react-router";
 import { ArrowUpRight, Building2, Check, MapPin } from "lucide-react";
-import type { ConstructionObject } from "@/entities/object";
-import type { Task } from "@/entities/task";
+import type { ObjectListItem } from "@/entities/object";
 export function ObjectCard({
   obj,
-  tasks,
   index,
   manager,
 }: {
-  obj: ConstructionObject;
-  tasks: Task[];
+  obj: ObjectListItem;
   index: number;
   manager: boolean;
 }) {
-  const objectTasks = tasks.filter((task) => task.objectId === obj.id);
-  const completed = objectTasks.filter(
-    (task) => task.status === "accepted",
-  ).length;
-  const review = objectTasks.filter((task) => task.status === "review").length;
+  const completed = obj.acceptedCount;
+  const review = obj.reviewCount;
   return (
     <Link to={`/objects/${obj.id}`} className="object-card">
       <div className={`object-card-top object-tone-${index % 3}`}>
@@ -34,21 +28,21 @@ export function ObjectCard({
         <div className="object-progress-label">
           <span>{manager ? "Выполнение задач" : "Мои задачи"}</span>
           <strong>
-            {completed} / {objectTasks.length}
+            {completed} / {obj.taskCount}
           </strong>
         </div>
         <div className="progress-track">
           <span
             style={{
-              width: `${objectTasks.length ? (completed / objectTasks.length) * 100 : 0}%`,
+              width: `${obj.taskCount ? (completed / obj.taskCount) * 100 : 0}%`,
             }}
           />
         </div>
         <div className="object-card-footer">
-          <span>{objectTasks.length} задач</span>
+          <span>{obj.taskCount} задач</span>
           {review > 0 ? (
             <span className="review-text">{review} на проверке</span>
-          ) : completed === objectTasks.length && completed > 0 ? (
+          ) : completed === obj.taskCount && completed > 0 ? (
             <span className="completed-text">
               <Check size={14} />
               Всё принято

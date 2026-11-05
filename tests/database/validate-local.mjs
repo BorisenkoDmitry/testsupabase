@@ -3,6 +3,7 @@
 import { PGlite } from "@electric-sql/pglite";
 import { readFileSync, writeFileSync, mkdirSync, readdirSync } from "node:fs";
 import assert from "node:assert/strict";
+import { verifyServerLists } from "./server-lists.mjs";
 const db = new PGlite();
 const fixture = JSON.parse(readFileSync("supabase/fixtures/demo.json", "utf8"));
 const ids = fixture.ids;
@@ -59,6 +60,7 @@ try {
   )[0];
   assert.deepEqual(counts, { profiles: 3, objects: 3, tasks: 8, history: 21 });
   assertions++;
+  await verifyServerLists({ rows, actor, actorIds, ids, check, denied });
   report.push(
     "Schema and RPC migrations execute; seed executes twice without duplicates: 3 profiles, 3 objects, 8 tasks, 21 events.",
   );

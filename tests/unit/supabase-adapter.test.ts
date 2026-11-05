@@ -131,26 +131,121 @@ describe("Supabase adapter boundary", () => {
       apiError({ code: "invalid_credentials", message: "invalid" }).message,
     ).toBe("Неверный email или пароль.");
   });
-  it("reads subsequent pages rather than truncating at the API limit", async () => {
-    const { api, fetcher, requests } = setup();
-    fetcher.mockImplementationOnce(
-      async () =>
-        new Response(
-          JSON.stringify(
-            Array.from({ length: 500 }, (_, i) => ({ ...task, id: String(i) })),
-          ),
-          { headers: { "content-type": "application/json" } },
-        ),
+  it("sends every list parameter to one server RPC and preserves the returned page", async () => {
+    const response = {
+      items: [{ ...task, object_name: "Объект", assignee_name: "Иван" }],
+      total: 101,
+      pageIndex: 2,
+      pageSize: 20,
+      summary: { total: 120, newCount: 8, inProgressCount: 9, reviewCount: 4 },
+    };
+    const { api, requests, fetcher } = setup(response);
+    const signal = new AbortController().signal;
+    const page = await api.tasks.list(
+      {
+        search: "%_",
+        objectId: "obj",
+        assigneeId: "user",
+        status: "new",
+        sortBy: "assigneeName",
+        sortDirection: "asc",
+        pageIndex: 2,
+        pageSize: 20,
+      },
+      signal,
     );
-    fetcher.mockImplementationOnce(
-      async () =>
-        new Response(JSON.stringify([{ ...task, id: "last" }]), {
-          headers: { "content-type": "application/json" },
-        }),
-    );
-    expect(await api.tasks.list()).toHaveLength(501);
-    // The two calls go to a read endpoint; no mutation is needed for pagination.
-    expect(fetcher).toHaveBeenCalledTimes(2);
-    expect(requests).toHaveLength(0);
+    expect(requests[0].url).toContain("/rpc/crm_list_tasks");
+    expect(requests[0].body).toEqual({
+      p_search: "%_",
+      p_object_id: "obj",
+      p_assignee_id: "user",
+      p_status: "new",
+      p_sort: "assigneeName",
+      p_direction: "asc",
+      p_page: 2,
+      p_page_size: 20,
+    });
+    expect(page.total).toBe(101);
+    expect(page.pageIndex).toBe(2);
+    expect(page.items).toHaveLength(1);
+    expect(page.items[0].assigneeName).toBe("Иван");
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(fetcher.mock.calls[0][1]?.signal).toBe(signal);
+  });
+  it("reads object card counts and summary directly from the server", async () => {
+    const { api, requests } = setup({
+      items: [
+        {
+          id: "obj",
+          name: "Стройка",
+          address: "Москва",
+          created_at: "2026-11-05",
+          version: 1,
+          task_count: 30,
+          accepted_count: 7,
+          review_count: 4,
+        },
+      ],
+      total: 14,
+      pageIndex: 1,
+      pageSize: 10,
+      summary: { objectCount: 14, activeTaskCount: 90, reviewCount: 20 },
+    });
+    const page = await api.objects.list({ search: "Москва", pageIndex: 1 });
+    expect(requests[0].url).toContain("crm_list_objects");
+    expect(requests[0].body).toMatchObject({
+      p_search: "Москва",
+      p_page: 1,
+      p_page_size: 10,
+    });
+    expect(page.items[0]).toMatchObject({
+      taskCount: 30,
+      acceptedCount: 7,
+      reviewCount: 4,
+    });
+    expect(page.summary.activeTaskCount).toBe(90);
+  });
+  it("requests eligible assignees on the server", async () => {
+    const { api, requests } = setup([
+      {
+        id: "ivan",
+        full_name: "Иван",
+        email: "ivan@example.test",
+        role: "executor",
+        is_active: true,
+      },
+    ]);
+    expect(await api.users.list(true)).toHaveLength(1);
+    expect(requests[0].body).toEqual({ p_kind: "assignees" });
+  });
+  it("passes history page parameters and preserves server order", async () => {
+    const item = {
+      id: "h1",
+      task_id: "task",
+      actor_id: "ivan",
+      from_status: "new",
+      to_status: "in_progress",
+      comment: null,
+      created_at: "2026-11-01",
+    };
+    const { api, requests } = setup({
+      items: [item, { ...item, id: "h2", created_at: "2026-11-02" }],
+      total: 19,
+      pageIndex: 1,
+      pageSize: 10,
+    });
+    const page = await api.tasks.history("task", { pageIndex: 1 });
+    expect(requests[0].body).toEqual({
+      p_task_id: "task",
+      p_page: 1,
+      p_page_size: 10,
+    });
+    expect(page.items.map((x) => x.id)).toEqual(["h1", "h2"]);
+    expect(page.total).toBe(19);
+  });
+  it("rejects malformed page responses without falling back to fetching all records", async () => {
+    const { api, fetcher } = setup([task]);
+    await expect(api.tasks.list()).rejects.toThrow();
+    expect(fetcher).toHaveBeenCalledTimes(1);
   });
 });

@@ -86,7 +86,7 @@ describe("mock API contract (not database security)", () => {
   it("scopes tasks, objects, details and history to the assigned executor", async () => {
     await login(api, 1);
     expect(
-      (await api.tasks.list()).every(
+      (await api.tasks.list()).items.every(
         (task) => task.assigneeId === demoUsers[1].id,
       ),
     ).toBe(true);
@@ -102,7 +102,7 @@ describe("mock API contract (not database security)", () => {
     await api.auth.signOut();
     await login(api, 1);
     expect(
-      (await api.objects.list()).some((obj) => obj.id === emptyObject.id),
+      (await api.objects.list()).items.some((obj) => obj.id === emptyObject.id),
     ).toBe(false);
     await expect(api.objects.get(emptyObject.id)).rejects.toThrow();
   });
@@ -142,7 +142,7 @@ describe("mock API contract (not database security)", () => {
     await expect(
       api.tasks.transition(task.id, "revision", "  "),
     ).rejects.toThrow();
-    expect(await api.tasks.history(task.id)).toHaveLength(3);
+    expect((await api.tasks.history(task.id)).items).toHaveLength(3);
     await api.tasks.transition(task.id, "revision", "Исправить шов");
     await api.auth.signOut();
     await login(api, 1);
@@ -151,7 +151,7 @@ describe("mock API contract (not database security)", () => {
     await api.auth.signOut();
     await login(api, 0);
     await api.tasks.transition(task.id, "accepted");
-    const history = await api.tasks.history(task.id);
+    const history = [...(await api.tasks.history(task.id)).items].reverse();
     expect(history.map((event) => event.toStatus)).toEqual([
       "new",
       "in_progress",
@@ -172,7 +172,7 @@ describe("mock API contract (not database security)", () => {
     ]);
     expect(history[3].comment).toBe("Исправить шов");
     await expect(api.tasks.transition(task.id, "new")).rejects.toThrow();
-    expect(await api.tasks.history(task.id)).toHaveLength(7);
+    expect((await api.tasks.history(task.id)).items).toHaveLength(7);
   }, 15000);
   it("does not accept injected status, author or date when saving a task", async () => {
     await login(api, 0);

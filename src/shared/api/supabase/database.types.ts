@@ -250,6 +250,34 @@ export type Database = {
         Args: { p_expected_version: number; p_id: string };
         Returns: undefined;
       };
+      crm_list_objects: {
+        Args: {
+          p_direction?: string;
+          p_page?: number;
+          p_page_size?: number;
+          p_search?: string;
+          p_sort?: string;
+        };
+        Returns: Json;
+      };
+      crm_list_options: { Args: { p_kind: string }; Returns: Json };
+      crm_list_tasks: {
+        Args: {
+          p_assignee_id?: string;
+          p_direction?: string;
+          p_object_id?: string;
+          p_page?: number;
+          p_page_size?: number;
+          p_search?: string;
+          p_sort?: string;
+          p_status?: Database["public"]["Enums"]["task_status"];
+        };
+        Returns: Json;
+      };
+      crm_task_history_page: {
+        Args: { p_page?: number; p_page_size?: number; p_task_id: string };
+        Returns: Json;
+      };
       crm_transition_task: {
         Args: {
           p_comment?: string;

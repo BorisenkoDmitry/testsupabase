@@ -44,6 +44,58 @@ export type TaskInput = Pick<
   Task,
   "title" | "description" | "objectId" | "assigneeId"
 >;
+export type SortDirection = "asc" | "desc";
+export type TaskSort = "title" | "status" | "assigneeName" | "createdAt";
+export interface PageRequest {
+  pageIndex?: number;
+  pageSize?: number;
+}
+export interface TaskListRequest extends PageRequest {
+  search?: string;
+  objectId?: string;
+  assigneeId?: string;
+  status?: TaskStatus;
+  sortBy?: TaskSort;
+  sortDirection?: SortDirection;
+}
+export interface ObjectListRequest extends PageRequest {
+  search?: string;
+  sortBy?: "name" | "address" | "createdAt";
+  sortDirection?: SortDirection;
+}
+export interface Page<T> {
+  items: T[];
+  total: number;
+  pageIndex: number;
+  pageSize: number;
+}
+export interface TaskListItem extends Task {
+  objectName: string;
+  assigneeName: string;
+}
+export interface TaskSummary {
+  total: number;
+  newCount: number;
+  inProgressCount: number;
+  reviewCount: number;
+}
+export interface TaskPage extends Page<TaskListItem> {
+  summary: TaskSummary;
+}
+export interface ObjectListItem extends ConstructionObject {
+  taskCount: number;
+  acceptedCount: number;
+  reviewCount: number;
+}
+export interface ObjectSummary {
+  objectCount: number;
+  activeTaskCount: number;
+  reviewCount: number;
+}
+export interface ObjectPage extends Page<ObjectListItem> {
+  summary: ObjectSummary;
+}
+export type ObjectOption = Pick<ConstructionObject, "id" | "name">;
 export interface CrmApi {
   auth: {
     getSession(): Promise<User | null>;
@@ -51,9 +103,15 @@ export interface CrmApi {
     signOut(): Promise<void>;
     onSessionChange?(listener: () => void): () => void;
   };
-  users: { list(): Promise<User[]> };
+  users: {
+    list(assigneesOnly?: boolean, signal?: AbortSignal): Promise<User[]>;
+  };
   objects: {
-    list(): Promise<ConstructionObject[]>;
+    list(
+      request?: ObjectListRequest,
+      signal?: AbortSignal,
+    ): Promise<ObjectPage>;
+    options(signal?: AbortSignal): Promise<ObjectOption[]>;
     get(id: string): Promise<ConstructionObject>;
     save(
       input: ObjectInput,
@@ -63,7 +121,7 @@ export interface CrmApi {
     remove(id: string, expectedVersion?: number): Promise<void>;
   };
   tasks: {
-    list(): Promise<Task[]>;
+    list(request?: TaskListRequest, signal?: AbortSignal): Promise<TaskPage>;
     get(id: string): Promise<Task>;
     save(
       input: TaskInput,
@@ -77,6 +135,10 @@ export interface CrmApi {
       comment?: string,
       expectedVersion?: number,
     ): Promise<Task>;
-    history(id: string): Promise<TaskHistory[]>;
+    history(
+      id: string,
+      request?: PageRequest,
+      signal?: AbortSignal,
+    ): Promise<Page<TaskHistory>>;
   };
 }

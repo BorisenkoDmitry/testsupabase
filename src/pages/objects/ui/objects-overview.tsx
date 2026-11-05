@@ -1,14 +1,11 @@
-import type { ConstructionObject } from "@/entities/object";
-import type { Task } from "@/entities/task";
+import type { ObjectSummary } from "@/entities/object";
 import { Building2, ClipboardList, Clock3 } from "lucide-react";
 import { SummaryCard } from "@/shared/ui/summary-card";
 export function ObjectsOverview({
-  objects,
-  tasks,
+  summary,
   manager,
 }: {
-  objects: ConstructionObject[];
-  tasks: Task[];
+  summary: ObjectSummary;
   manager: boolean;
 }) {
   return (
@@ -16,18 +13,18 @@ export function ObjectsOverview({
       <SummaryCard
         icon={Building2}
         label="Объектов в пространстве"
-        value={objects.length}
+        value={summary.objectCount}
       />
       <SummaryCard
         icon={ClipboardList}
         label={manager ? "Активных задач" : "Моих активных задач"}
-        value={tasks.filter((task) => task.status !== "accepted").length}
+        value={summary.activeTaskCount}
         tone="green"
       />
       <SummaryCard
         icon={Clock3}
         label="Ожидают проверки"
-        value={tasks.filter((task) => task.status === "review").length}
+        value={summary.reviewCount}
         tone="amber"
       />
     </div>

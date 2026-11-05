@@ -5,18 +5,20 @@ import { formatDate } from "@/shared/lib/utils";
 export function TaskHistoryPanel({
   history,
   users,
+  total,
 }: {
   history: TaskHistory[];
   users: User[];
+  total: number;
 }) {
   return (
     <section className="detail-panel history-panel">
       <h2>
         <History size={19} />
-        История изменений <span className="count-badge">{history.length}</span>
+        История изменений <span className="count-badge">{total}</span>
       </h2>
       <ol className="timeline">
-        {[...history].reverse().map((event) => {
+        {history.map((event) => {
           const actor = users.find((item) => item.id === event.actorId);
           return (
             <li key={event.id}>

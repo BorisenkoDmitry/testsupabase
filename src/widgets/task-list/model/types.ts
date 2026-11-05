@@ -1,11 +1,17 @@
-import type { Task } from "@/entities/task";
-import type { ConstructionObject } from "@/entities/object";
-import type { User } from "@/entities/user";
-
+import type {
+  OnChangeFn,
+  SortingState,
+  PaginationState,
+} from "@tanstack/react-table";
+import type { TaskPage, ObjectOption, User } from "@/shared/api";
 export interface TaskListProps {
-  tasks: Task[];
-  objects: ConstructionObject[];
+  page: TaskPage;
+  objects: ObjectOption[];
   users: User[];
   manager: boolean;
   showObject?: boolean;
+  sorting: SortingState;
+  onSortingChange: OnChangeFn<SortingState>;
+  onPaginationChange: OnChangeFn<PaginationState>;
+  isFetching: boolean;
 }

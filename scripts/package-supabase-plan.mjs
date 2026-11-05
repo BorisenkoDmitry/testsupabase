@@ -6,7 +6,7 @@ const files = [
   ...readdirSync('supabase/migrations').filter(file=>file.endsWith('.sql')).map(file=>`supabase/migrations/${file}`),
   'supabase/seeds/demo.sql', 'supabase/fixtures/demo.json', 'supabase/checks/setup-check.sql',
   'supabase/README.md', 'supabase/demo.env.example',
-  'scripts/supabase/create-demo-users.mjs', 'scripts/supabase/export-mock-seed.mjs', 'tests/database/validate-local.mjs',
+  'scripts/supabase/create-demo-users.mjs', 'scripts/supabase/export-mock-seed.mjs', 'tests/database/validate-local.mjs', 'tests/database/server-lists.mjs',
   'src/shared/api/mock/seed.ts', 'src/shared/api/contracts.ts',
   ...['output/pdf/kontur-supabase-plan.pdf', 'output/qa/database.json'].filter(existsSync),
 ]

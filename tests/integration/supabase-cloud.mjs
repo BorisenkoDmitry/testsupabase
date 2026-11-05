@@ -2,6 +2,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import { createClient } from "@supabase/supabase-js";
+import { verifyCloudLists } from "./server-lists.mjs";
 const {
   SUPABASE_URL: url,
   SUPABASE_PUBLISHABLE_KEY: key,
@@ -62,6 +63,16 @@ try {
   );
   const all = await data(manager.client.from("tasks").select("*"));
   ok(all.length === 8, "Manager sees 8 initial tasks");
+  await verifyCloudLists({
+    manager,
+    ivan,
+    alexey,
+    anon,
+    all,
+    ok,
+    denied,
+    data,
+  });
   for (const actor of [ivan, alexey]) {
     const own = await data(actor.client.from("tasks").select("*"));
     ok(
@@ -134,14 +145,12 @@ try {
       "Direct status update denied",
     );
     await denied(
-      client
-        .from("tasks")
-        .insert({
-          title: "Forged",
-          object_id: all[0].object_id,
-          assignee_id: ivan.id,
-          author_id: id,
-        }),
+      client.from("tasks").insert({
+        title: "Forged",
+        object_id: all[0].object_id,
+        assignee_id: ivan.id,
+        author_id: id,
+      }),
       "Direct task insert denied",
     );
     await denied(

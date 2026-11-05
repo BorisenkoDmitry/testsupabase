@@ -1,63 +1,40 @@
 import { useMemo } from "react";
-import {
-  getCoreRowModel,
-  getFilteredRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from "@tanstack/react-table";
-import type { Task } from "@/entities/task";
+import { getCoreRowModel, useReactTable } from "@tanstack/react-table";
+import type { TaskListItem } from "@/entities/task";
 import { useTaskFilters } from "@/features/task-filters";
-import { useDebounce } from "@/shared/lib/use-debounce";
 import { createTaskColumns } from "../ui/task-columns";
 import type { TaskListProps } from "./types";
-
 export function useTaskTable({
-  tasks,
-  objects,
-  users,
+  page,
   manager,
   showObject = true,
+  sorting,
+  onSortingChange,
+  onPaginationChange,
 }: TaskListProps) {
   const filters = useTaskFilters();
-  const search = useDebounce(filters.search, 300);
   const columns = useMemo(
-    () => createTaskColumns({ objects, users, showObject }),
-    [objects, users, showObject],
+    () => createTaskColumns({ showObject }),
+    [showObject],
   );
-  const columnFilters = useMemo(
-    () => [
-      ...(search.trim() ? [{ id: "title", value: search.trim() }] : []),
-      ...(filters.status !== "all"
-        ? [{ id: "status", value: filters.status }]
-        : []),
-      ...(manager && filters.assigneeId !== "all"
-        ? [{ id: "assigneeId", value: filters.assigneeId }]
-        : []),
-      ...(showObject && filters.objectId !== "all"
-        ? [{ id: "objectId", value: filters.objectId }]
-        : []),
-    ],
-    [
-      search,
-      filters.status,
-      filters.assigneeId,
-      filters.objectId,
-      manager,
-      showObject,
-    ],
-  );
-  const table = useReactTable<Task>({
-    data: tasks,
+  const table = useReactTable<TaskListItem>({
+    data: page.items,
     columns,
+    rowCount: page.total,
+    manualFiltering: true,
+    manualSorting: true,
+    manualPagination: true,
     state: {
-      columnFilters,
+      sorting,
+      pagination: { pageIndex: page.pageIndex, pageSize: page.pageSize },
       columnVisibility: { assigneeId: manager, objectId: false },
     },
+    onSortingChange,
+    onPaginationChange,
     getRowId: (task) => task.id,
     getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getSortedRowModel: getSortedRowModel(),
     enableMultiSort: false,
+    autoResetPageIndex: false,
     defaultColumn: { sortDescFirst: false },
   });
   const active =
