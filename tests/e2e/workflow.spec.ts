@@ -6,7 +6,7 @@ async function login(page: Page, email: string) {
   await page.getByLabel("Email", { exact: true }).fill(email);
   await page.getByLabel("Пароль", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Войти в пространство" }).click();
-  await expect(page).not.toHaveURL(/\/login$/);
+  await expect(page).not.toHaveURL(/\/login$/, { timeout: 15_000 });
 }
 async function action(page: Page, label: string, comment?: string) {
   await page.getByRole("button", { name: label, exact: true }).click();

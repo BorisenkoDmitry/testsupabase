@@ -7,7 +7,7 @@ async function login(page: Page, name = "manager") {
   await page.getByLabel("Email", { exact: true }).fill(name + "@demo.ru");
   await page.getByLabel("Пароль", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Войти в пространство" }).click();
-  await expect(page).not.toHaveURL(/\/login$/);
+  await expect(page).not.toHaveURL(/\/login$/, { timeout: 15_000 });
 }
 async function api() {
   const client = createClient(

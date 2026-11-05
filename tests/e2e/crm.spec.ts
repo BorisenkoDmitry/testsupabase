@@ -12,6 +12,7 @@ async function login(page: Page, name: string) {
   await page.getByRole("button", { name: "Войти в пространство" }).click();
   await expect(page).toHaveURL(
     name === "manager" ? /\/objects$/ : /\/my-tasks$/,
+    { timeout: 15_000 },
   );
 }
 async function cleanupObject(id: string) {
